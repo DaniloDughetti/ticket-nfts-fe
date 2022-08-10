@@ -8,7 +8,7 @@ const TWITTER_HANDLE = 'danilodughetti';
 const TWITTER_LINK = `https://twitter.com/${TWITTER_HANDLE}`;
 const OPENSEA_LINK = '';
 const TOTAL_SUPPLY = 100;
-const CONTRACT_ADDRESS = "0x5FbDB2315678afecb367f032d93F642f64180aa3";
+const CONTRACT_ADDRESS = "0xddd28bF3EC841042ceB1e7afd79D691e9Dd89Ee7";
 
 const App = () => {
   const [currentAccount, setCurrentAccount] = useState("");
