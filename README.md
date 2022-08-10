@@ -88,42 +88,19 @@ Major frameworks/libraries used to bootstrap project:
 
 ### Prerequisites
 
-You need to install Node, npm and hardhat
-* node
-  ```sh
-  apt-get install node@16.14.2 -g
-  ```
-* npm
-  ```sh
-  npm install npm@latest -g
-  ```
+Register to [replit.com](replit.com)
 
 ### Installation
 
 _Below the commands list needed to run project locally_
 
-1. Clone the repo
+1. Import the following repository in [replit.com](replit.com) 
    ```sh
-   git clone https://github.com/DaniloDughetti/ticket-nfts-fe.git
+   https://github.com/DaniloDughetti/ticket-nfts-fe.git
    ```
-2. Install NPM packages
-   ```sh
-   npm install
-   ```
-3. Register a free node endpoint at [QuickNode](https://www.quicknode.com/) and copy/paste API KEY and PRIVATE KEY
-4. Edit environment variables in `.env`
-   ```js
-    QUICKNODE_API_KEY_URL=<RINKEBY QUICKNODE ENDPOINT API KEY>
-    RINKEBY_PRIVATE_KEY=<RINKEBY METAMASK PRIVATE KEY>
-    PROD_QUICKNODE_KEY=<MAIN NET QUICKNODE ENDPOINT API KEY>
-    PRIVATE_KEY=<MAIN NET METAMASK PRIVATE KEY>
-    MAX_SUPPLY=100
-   ```
-5. Deploy smart contract on Rinkeby
-   ```sh
-   npx hardhat run scripts/deploy.js
-   ```
-   
+2. Edit smart contract address in app.jsx
+3. Press run
+4. 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 ## Usage
