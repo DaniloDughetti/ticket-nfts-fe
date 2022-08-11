@@ -11,9 +11,11 @@ const TOTAL_SUPPLY = 100;
 const CONTRACT_ADDRESS = "0xddd28bF3EC841042ceB1e7afd79D691e9Dd89Ee7";
 
 const App = () => {
+  var initialTokenList = [];
   const [currentAccount, setCurrentAccount] = useState("");
   const [statusEvent, setStatusEvent] = useState("");
   const [buttonStatus, setButtonStatus] = useState(false);
+  const [tokenList, setTokenList] = useState(initialTokenList);
 
   const checkIfWalletIsConnected = async () => {
     const { ethereum } = window;
@@ -83,6 +85,11 @@ const App = () => {
           setStatusEvent(`NFT edition ${counter}/${TOTAL_SUPPLY} minted! It can take a max of 10 min to show up on OpenSea. Here's the link: https://testnets.opensea.io/assets/${CONTRACT_ADDRESS}/${tokenId.toNumber()}`);
         });
 
+        connectedContract.on("TicketToShow", (tokenId, tokenUrl) => {
+          console.log(tokenId, tokenUrl);
+          setTokenList(initialTokenList => [...initialTokenList, { tokenId: tokenId, tokenUrl: tokenUrl }]);
+        });
+
         setButtonStatus(false);
         console.log("Setup event listener!")
 
@@ -92,6 +99,14 @@ const App = () => {
     } catch (error) {
       console.log(error)
     }
+  }
+
+  const getTokenList = async () => {
+    const provider = new ethers.providers.Web3Provider(ethereum);
+    const signer = provider.getSigner();
+    const connectedContract = new ethers.Contract(CONTRACT_ADDRESS, TicketNFTGenerator.abi, signer);
+
+    connectedContract.getNftList();
   }
 
   const askContractToMintNft = async () => {
@@ -129,6 +144,14 @@ const App = () => {
     </button>
   );
 
+  const renderNftList = () => (
+    <>
+      {initialTokenList.map(({ tokenId, tokenUrl }) => (
+        <p key={tokenId}> {tokenId}: {tokenUrl} </p>
+      ))}
+    </>
+  );
+
   useEffect(() => {
     checkIfWalletIsConnected();
   }, [])
@@ -148,6 +171,16 @@ const App = () => {
               <button disabled={buttonStatus} onClick={askContractToMintNft} className="cta-button connect-wallet-button">
                 Mint Ticket
       </button>
+            )}
+
+          {initialTokenList != null && initialTokenList.length > 0 ? (
+            <button disabled={buttonStatus} onClick={getTokenList} className="cta-button connect-wallet-button">
+              Get NFT List
+
+          <div className="status-label">{tokenList}</div>
+            </button>
+          ) : (
+              <p>You have no NFT yet</p>
             )}
 
           <div className="status-label">{statusEvent}</div>
