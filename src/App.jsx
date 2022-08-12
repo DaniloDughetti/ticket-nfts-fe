@@ -8,14 +8,14 @@ const TWITTER_HANDLE = 'danilodughetti';
 const TWITTER_LINK = `https://twitter.com/${TWITTER_HANDLE}`;
 const OPENSEA_LINK = '';
 const TOTAL_SUPPLY = 100;
-const CONTRACT_ADDRESS = "0xddd28bF3EC841042ceB1e7afd79D691e9Dd89Ee7";
+const CONTRACT_ADDRESS = "0x7B1d344F3C22804B5872d419f983626Ad08e2a77";
 
 const App = () => {
-  var initialTokenList = [];
   const [currentAccount, setCurrentAccount] = useState("");
   const [statusEvent, setStatusEvent] = useState("");
   const [buttonStatus, setButtonStatus] = useState(false);
-  const [tokenList, setTokenList] = useState(initialTokenList);
+  const [tokenList, setTokenList] = useState([]);
+  const [tokenListLength, setTokenListLength] = useState(0);
 
   const checkIfWalletIsConnected = async () => {
     const { ethereum } = window;
@@ -81,13 +81,19 @@ const App = () => {
         const connectedContract = new ethers.Contract(CONTRACT_ADDRESS, TicketNFTGenerator.abi, signer);
 
         connectedContract.on("TicketMinted", (from, tokenId, counter) => {
-          console.log(from, tokenId.toNumber())
           setStatusEvent(`NFT edition ${counter}/${TOTAL_SUPPLY} minted! It can take a max of 10 min to show up on OpenSea. Here's the link: https://testnets.opensea.io/assets/${CONTRACT_ADDRESS}/${tokenId.toNumber()}`);
         });
 
         connectedContract.on("TicketToShow", (tokenId, tokenUrl) => {
-          console.log(tokenId, tokenUrl);
-          setTokenList(initialTokenList => [...initialTokenList, { tokenId: tokenId, tokenUrl: tokenUrl }]);
+          let _tokenList = tokenList;
+          //_tokenList.push({ tokenId: tokenId, tokenUrl: tokenUrl });
+          _tokenList.push(tokenUrl);
+          setTokenList(_tokenList);
+          setTokenListLength(tokenList.length);
+          console.log("**********************************");
+          console.log(tokenList.length);
+          console.log(tokenList);
+          console.log("**********************************");
         });
 
         setButtonStatus(false);
@@ -106,10 +112,11 @@ const App = () => {
     const signer = provider.getSigner();
     const connectedContract = new ethers.Contract(CONTRACT_ADDRESS, TicketNFTGenerator.abi, signer);
 
-    connectedContract.getNftList();
+    connectedContract.getTokenList();
+    console.log("getTokenList done");
   }
 
-  const askContractToMintNft = async () => {
+  const askContractToMintToken = async () => {
     setButtonStatus(true);
     try {
       const { ethereum } = window;
@@ -143,17 +150,20 @@ const App = () => {
       Connect to Wallet
     </button>
   );
-
-  const renderNftList = () => (
-    <>
-      {initialTokenList.map(({ tokenId, tokenUrl }) => (
-        <p key={tokenId}> {tokenId}: {tokenUrl} </p>
-      ))}
-    </>
-  );
+  /*
+    const renderNftList = () => {
+      let _tokenList = [];
+      for (var i = 0; i < tokenList.length; i++) {
+        _tokenList.push(<span className='tokenList' key={i}> {tokenList[i].tokenId} {tokenList[i].tokenUrl} </span>);
+      }
+      return (
+        { _tokenList }
+      );
+    };*/
 
   useEffect(() => {
     checkIfWalletIsConnected();
+
   }, [])
 
 
@@ -168,21 +178,22 @@ const App = () => {
           {currentAccount === "" ? (
             renderNotConnectedContainer()
           ) : (
-              <button disabled={buttonStatus} onClick={askContractToMintNft} className="cta-button connect-wallet-button">
+              <button disabled={buttonStatus} onClick={askContractToMintToken} className="cta-button connect-wallet-button">
                 Mint Ticket
       </button>
             )}
+          <br />
+          <br />
+          <button onClick={getTokenList} className="cta-button connect-wallet-button">
+            Get NFT List
+          </button>
 
-          {initialTokenList != null && initialTokenList.length > 0 ? (
-            <button disabled={buttonStatus} onClick={getTokenList} className="cta-button connect-wallet-button">
-              Get NFT List
-
-          <div className="status-label">{tokenList}</div>
-            </button>
-          ) : (
-              <p>You have no NFT yet</p>
-            )}
-
+          {tokenListLength > 0 ? (
+            <div className="status-label">
+              rendered tokens:
+              {tokenList.map(token => <div>{token}</div>)}
+            </div>) : (<p>No tokens to show</p>)
+          }
           <div className="status-label">{statusEvent}</div>
         </div>
         <div className="footer-container">
@@ -195,7 +206,7 @@ const App = () => {
           >{`built by @${TWITTER_HANDLE}`}</a>
         </div>
       </div>
-    </div>
+    </div >
   );
 };
 
