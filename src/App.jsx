@@ -32,8 +32,8 @@ const App = () => {
     let chainId = await ethereum.request({ method: 'eth_chainId' });
     console.log('Connected to chain ' + chainId);
 
-    const rinkebyChainId = '0x5';
-    if (chainId !== rinkebyChainId) {
+    const goerliChainId = '0x5';
+    if (chainId !== goerliChainId) {
       alert('You are not connected to the Goerli Test Network!');
     }
 
