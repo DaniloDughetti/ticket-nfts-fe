@@ -3,12 +3,16 @@ import './styles/App.css';
 import twitterLogo from './assets/twitter-logo.svg';
 import TicketNFTGenerator from './utils/TicketNFTGenerator.json';
 import { ethers } from 'ethers';
+import axios from 'axios';
+
 
 const TWITTER_HANDLE = 'danilodughetti';
 const TWITTER_LINK = `https://twitter.com/${TWITTER_HANDLE}`;
 const OPENSEA_LINK = '';
 const TOTAL_SUPPLY = 100;
-const CONTRACT_ADDRESS = '0x39A51473674988897bEC93b7d8D449032a748884';
+const CONTRACT_ADDRESS = '0x39a51473674988897bec93b7d8d449032a748884';
+const API_KEY = "TTH82UMFMKUSWYII2XESH728527BNFAG83";
+const BASE_URL = `https://api-goerli.etherscan.io/api?module=account&action=tokennfttx&contractaddress=${CONTRACT_ADDRESS}&page=1&offset=100&startblock=0&sort=asc&apikey=${API_KEY}`
 
 const App = () => {
   const [currentAccount, setCurrentAccount] = useState('');
@@ -16,6 +20,63 @@ const App = () => {
   const [buttonStatus, setButtonStatus] = useState(false);
   const [tokenList, setTokenList] = useState([]);
   const [tokenListLength, setTokenListLength] = useState(0);
+
+
+  const setTokenListFromEtherScan = async (address) => {
+    let baseUrl = BASE_URL + '&address=' + address;
+    let tokenIds = [];
+    axios.get(baseUrl)
+      .then(response => {
+        if (response !== null && response !== undefined) {
+
+          for (let i = 0; i < response.data.result.length; i++) {
+            if (response.data.result[i].contractAddress === CONTRACT_ADDRESS) {
+              tokenIds.push(response.data.result[i].tokenID);
+            }
+          }
+        }
+        try {
+          const { ethereum } = window;
+
+          if (ethereum) {
+            // Same stuff again
+            const provider = new ethers.providers.Web3Provider(ethereum);
+            const signer = provider.getSigner();
+            const connectedContract = new ethers.Contract(
+              CONTRACT_ADDRESS,
+              TicketNFTGenerator.abi,
+              signer
+            );
+            let tokenUrls = [];
+            if (tokenIds !== null && tokenIds !== undefined && tokenIds.length > 0) {
+              for (let i = 0; i < tokenIds.length; i++) {
+                tokenUrls.push(connectedContract.tokenURI(tokenIds[i]));
+                connectedContract.tokenURI(tokenIds[i]).then(token => {
+
+                  let url = token.replace("ipfs://", "https://ipfs.io/ipfs/");
+                  console.log(url);
+                  axios.get(url).then(response => {
+                    let _tokenList = tokenList;
+                    _tokenList.push(response);
+                    console.log(response);
+                    setTokenList(_tokenList);
+                  });
+
+                });
+              }
+            }
+          }
+        } catch (error) {
+          console.log(error);
+        }
+      });
+  }
+
+  const getTokenIDList = async (address) => {
+
+    let tokenIds = await getTokenIDListFromEtherScan(address);
+
+  }
 
   const checkIfWalletIsConnected = async () => {
     const { ethereum } = window;
@@ -41,6 +102,8 @@ const App = () => {
       const account = accounts[0];
       console.log('Found an authorized account:', account);
       setCurrentAccount(account);
+
+      setTokenListFromEtherScan(account);
 
       setupEventListener();
     } else {
@@ -91,17 +154,17 @@ const App = () => {
           );
         });
 
-        connectedContract.on('TicketToShow', (tokenId, tokenUrl) => {
-          let _tokenList = tokenList;
-          _tokenList.push({ tokenId: tokenId, tokenUrl: tokenUrl });
-          //_tokenList.push(tokenUrl);
-          setTokenList(_tokenList);
-          setTokenListLength(tokenList.length);
-          console.log('**********************************');
-          console.log(tokenList.length);
-          console.log(tokenList);
-          console.log('**********************************');
-        });
+        /*  connectedContract.on('TicketToShow', (tokenId, tokenUrl) => {
+            let _tokenList = tokenList;
+            _tokenList.push({ tokenId: tokenId, tokenUrl: tokenUrl });
+            //_tokenList.push(tokenUrl);
+            setTokenList(_tokenList);
+            setTokenListLength(tokenList.length);
+            console.log('**********************************');
+            console.log(tokenList.length);
+            console.log(tokenList);
+            console.log('**********************************');
+          });*/
 
         setButtonStatus(false);
         console.log('Setup event listener!');
@@ -113,7 +176,8 @@ const App = () => {
     }
   };
 
-  const getTokenList = async () => {
+  /*)
+  const renderTokenList = async () => {
     const provider = new ethers.providers.Web3Provider(ethereum);
     const signer = provider.getSigner();
     const connectedContract = new ethers.Contract(
@@ -124,7 +188,7 @@ const App = () => {
 
     connectedContract.getTokenList();
     console.log('getTokenList done');
-  };
+  };*/
 
   const askContractToMintToken = async () => {
     setButtonStatus(true);
@@ -171,18 +235,18 @@ const App = () => {
 		</button>
   );
 
-  const renderTokenList = () => {
-    let _tokenList = [];
-    for (var i = 0; i < tokenList.length; i++) {
-      _tokenList.push(
-        <span className="tokenList" key={i}>
-          {' '}
-          {tokenList[i].tokenId} {tokenList[i].tokenUrl}{' '}
-        </span>
-      );
-    }
-    return { _tokenList };
-  };
+  /* const renderTokenList = () => {
+     let _tokenList = [];
+     for (var i = 0; i < tokenList.length; i++) {
+       _tokenList.push(
+         <span className="tokenList" key={i}>
+           {' '}
+           {tokenList[i].tokenId} {tokenList[i].tokenUrl}{' '}
+         </span>
+       );
+     }
+     return { _tokenList };
+   };*/
 
   useEffect(() => {
     checkIfWalletIsConnected();
@@ -210,29 +274,8 @@ const App = () => {
             )}
           <br />
           <br />
-          <button
-            onClick={getTokenList}
-            className="cta-button connect-wallet-button"
-          >
-            Get NFT List
-					</button>
 
-          {tokenListLength > 0 ? (
-            <div className="status-label">
-              rendered tokens:
-							{tokenList.map(
-                (token, index) =>
-                  +(
-                    <div key={index}>
-                      {' '}
-                      {token.tokenId._hex} - {token.tokenUrl}
-                    </div>
-                  )
-              )}
-            </div>
-          ) : (
-              <p>No tokens to show</p>
-            )}
+
           <div className="status-label">{statusEvent}</div>
         </div>
         <div className="footer-container">
@@ -248,5 +291,31 @@ const App = () => {
     </div>
   );
 };
+/*
 
+          <button
+            onClick={getTokenList}
+            className="cta-button connect-wallet-button"
+          >
+            Get NFT List
+					</button>
+
+
+     {tokenListLength > 0 ? (
+            <div className="status-label">
+              rendered tokens:
+							{tokenList.map(
+                (token, index) =>
+                  +(
+                    <div key={index}>
+                      {' '}
+                      {token.tokenId._hex} - {token.tokenUrl}
+                    </div>
+                  )
+              )}
+            </div>
+          ) : (
+              <p>No tokens to show</p>
+            )}
+*/
 export default App;
