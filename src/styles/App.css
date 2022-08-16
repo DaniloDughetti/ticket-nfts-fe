@@ -24,7 +24,8 @@
 }
 
 .sub-text {
-  font-size: 25px;
+  font-size: 150%;
+  font-weight: bold;
   color: white;
 }
 
@@ -93,6 +94,31 @@
     font-weight: bold;
     margin-top: 5%;
     text-align: center;
+}
+.tokenList {
+  color: white;
+}
+.tokenTitle {
+  font-size: 150%;
+  font-weight: bold;
+}
+.tokenDescription {
+  font-size: 100%;
+}
+.tokenItem {
+  display: inline-block;
+  border-radius: 10px;
+  background-color: #000000;
+  border: 1px solid #FFFFFF;
+  margin-left: 1%;
+}
+.tokenImage {
+  text-align: center;
+}
+
+.tokenImage img{
+  text-align: center;
+  height: 25%;
 }
 
 /* KeyFrames */
