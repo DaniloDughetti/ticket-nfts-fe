@@ -110,7 +110,8 @@
   border-radius: 10px;
   background-color: #0d1116;
   border: 1px solid #FFFFFF;
-  margin-left: 1%;
+  margin: 1%;
+  padding: 1%;
 }
 .tokenImage {
   text-align: center;

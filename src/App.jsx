@@ -11,7 +11,7 @@ const TWITTER_HANDLE = 'danilodughetti';
 const TWITTER_LINK = `https://twitter.com/${TWITTER_HANDLE}`;
 const OPENSEA_LINK = '';
 const TOTAL_SUPPLY = 100;
-const CONTRACT_ADDRESS = '0x39a51473674988897bec93b7d8d449032a748884';
+const CONTRACT_ADDRESS = '0xefc3060AF6c2147C044E169Bdcd7dACdF25418a0';
 const API_KEY = "TTH82UMFMKUSWYII2XESH728527BNFAG83";
 const BASE_URL = `https://api-goerli.etherscan.io/api?module=account&action=tokennfttx&contractaddress=${CONTRACT_ADDRESS}&page=1&offset=100&startblock=0&sort=asc&apikey=${API_KEY}`
 
@@ -21,16 +21,50 @@ const App = () => {
   const [buttonStatus, setButtonStatus] = useState(false);
   const [tokenList, setTokenList] = useState([]);
   const [isTokensLoading, setIsTokensLoading] = useState(true);
+  const [tokensSupplyStatus, setTokensSupplyStatus] = useState({});
+
+  const isAddressEqual = (address, addressToCompare) => {
+    return (address !== null && address !== undefined) &&
+      (addressToCompare !== null && addressToCompare !== undefined) &&
+      address.toUpperCase() === addressToCompare.toUpperCase();
+  }
+
+  const getTokensSupplyStatus = async () => {
+    const provider = new ethers.providers.Web3Provider(ethereum);
+    const signer = provider.getSigner();
+    const connectedContract = new ethers.Contract(
+      CONTRACT_ADDRESS,
+      TicketNFTGenerator.abi,
+      signer
+    );
+    let contractCalls = [];
+    contractCalls.push(connectedContract.getTokenCounter());
+    contractCalls.push(connectedContract.getMaxSupply());
+
+    Promise.all(contractCalls).then(response => {
+      setTokensSupplyStatus({
+        currentToken: response[0].toNumber(),
+        maxSupply: response[1].toNumber()
+      });
+    }).catch(error => {
+      console.log(error);
+      setTokensSupplyStatus({ currentToken: 0, maxSupply: 0 });
+    })
+  }
 
   const setTokenListFromEtherScan = async (address) => {
+    console.log("setTokenListFromEtherScan");
     let baseUrl = BASE_URL + '&address=' + address;
     let tokenIds = [];
+    console.log(baseUrl);
     axios.get(baseUrl)
       .then(response => {
+        console.log("________________________");
+        console.log(response);
         if (response !== null && response !== undefined) {
 
           for (let i = 0; i < response.data.result.length; i++) {
-            if (response.data.result[i].contractAddress === CONTRACT_ADDRESS) {
+            if (isAddressEqual(response.data.result[i].contractAddress, CONTRACT_ADDRESS)) {
               tokenIds.push(response.data.result[i].tokenID);
             }
           }
@@ -47,6 +81,8 @@ const App = () => {
               signer
             );
             let tokenUrls = [];
+            console.log("tokenIds");
+            console.log(tokenIds);
             if (tokenIds !== null && tokenIds !== undefined && tokenIds.length > 0) {
 
               setIsTokensLoading(true);
@@ -66,18 +102,20 @@ const App = () => {
                         _token.tokenId = tokenIds[i];
                         _tokenList.push(_token);
                       }
+                      console.log(_tokenList);
+                      console.log("*************************");
                       setTokenList(_tokenList);
                       setIsTokensLoading(false);
-                    });
+                    }).catch(error => console.log(error));
                   }
-                });
+                }).catch(error => console.log(error));
               }
             }
           }
         } catch (error) {
           console.log(error);
         }
-      });
+      }).catch(error => console.log(error));
   }
 
   const refreshTokenList = async () => {
@@ -118,7 +156,7 @@ const App = () => {
     }
   };
 
-	/*
+  /*
   * Implement your connectWallet method here
   */
   const connectWallet = async () => {
@@ -136,6 +174,8 @@ const App = () => {
       console.log('Connected', accounts[0]);
       setCurrentAccount(accounts[0]);
       refreshTokenList();
+      getTokensSupplyStatus();
+
     } catch (error) {
       console.log(error);
     }
@@ -160,8 +200,8 @@ const App = () => {
           setStatusEvent(
             `NFT edition ${counter}/${TOTAL_SUPPLY} minted! It can take a max of 10 min to show up on OpenSea. Here's the link: https://testnets.opensea.io/assets/${CONTRACT_ADDRESS}/${tokenId.toNumber()}`
           );
-
           refreshTokenList();
+          getTokensSupplyStatus();
         });
 
         setButtonStatus(false);
@@ -242,6 +282,7 @@ const App = () => {
   useEffect(() => {
     checkIfWalletIsConnected();
     refreshTokenList();
+    getTokensSupplyStatus();
   }, []);
 
   return (
@@ -251,8 +292,8 @@ const App = () => {
           <p className="header gradient-text">Ticket NFT generator</p>
           <p className="sub-text">
             This dApp let you mint a Ticket as NFT. You will receive a ticket
-						with a random rarity (Common, rare, super-rare).
-					</p>
+            with a random rarity (Common, rare, super-rare).
+          </p>
           {currentAccount === '' ? (
             renderNotConnectedContainer()
           ) : (
@@ -262,8 +303,8 @@ const App = () => {
                   onClick={askContractToMintToken}
                   className="cta-button connect-wallet-button"
                 >
-                  Mint Ticket
-						</button>
+                  Mint Ticket {tokensSupplyStatus.currentToken} / {tokensSupplyStatus.maxSupply}
+                </button>
 
                 <div className="status-label">{statusEvent}</div>
                 <div className="viewTokensTitle"> Your minted tickets
