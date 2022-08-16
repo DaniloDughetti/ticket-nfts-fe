@@ -27,6 +27,9 @@
   font-size: 150%;
   font-weight: bold;
   color: white;
+  padding-left: 25%;
+  padding-right: 25%;
+  margin-top: 5%;
 }
 
 .gradient-text {
@@ -76,7 +79,12 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  padding-bottom: 30px;
+  padding-bottom: 1%;
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(7.6px);
+  position: fixed;
+  bottom: 0;
+  width: 100%;
 }
 
 .twitter-logo {
@@ -108,8 +116,8 @@
 .tokenItem {
   display: inline-block;
   border-radius: 10px;
-  background-color: #0d1116;
-  border: 1px solid #FFFFFF;
+  background-color: #6d6a75;
+  border: 0px solid #6d6a75;
   margin: 1%;
   padding: 1%;
 }
@@ -142,7 +150,25 @@
   height: 100%;
   display: contents;
 }
-
+.navbar {
+  overflow: hidden;
+  background-color: rgba(109, 106, 117,0.3);
+  position: fixed;
+  top: 0;
+  width: 100%;
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(7.6px);
+}
+.navbar button {
+  float: right;
+  margin: 0.5%;
+}
+.navbar p {
+  font-size: 200%;
+  float: left;
+  margin-left: 1%;
+  margin-top: 0.7%;
+}
 /* KeyFrames */
 @-webkit-keyframes gradient-animation {
   0% {

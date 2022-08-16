@@ -59,8 +59,6 @@ const App = () => {
     console.log(baseUrl);
     axios.get(baseUrl)
       .then(response => {
-        console.log("________________________");
-        console.log(response);
         if (response !== null && response !== undefined) {
 
           for (let i = 0; i < response.data.result.length; i++) {
@@ -102,8 +100,6 @@ const App = () => {
                         _token.tokenId = tokenIds[i];
                         _tokenList.push(_token);
                       }
-                      console.log(_tokenList);
-                      console.log("*************************");
                       setTokenList(_tokenList);
                       setIsTokensLoading(false);
                     }).catch(error => console.log(error));
@@ -285,12 +281,32 @@ const App = () => {
     getTokensSupplyStatus();
   }, []);
 
+  const getCurrentAccountCropped = (account) => {
+
+    return account.substring(0, 3) + "..." + account.substring(account.length - 3, account.length);
+  }
+
   return (
     <div className="App">
+      <div className="navbar">
+        <p className="header gradient-text">Ticket NFT generator</p>
+        {currentAccount === '' ? (
+          renderNotConnectedContainer()
+        ) : (
+            <div>
+              <button
+                disabled="true"
+                className="cta-button connect-wallet-button"
+              >
+                {getCurrentAccountCropped(currentAccount)}
+              </button>
+            </div>
+          )}
+      </div>
       <div className="container">
         <div className="header-container">
-          <p className="header gradient-text">Ticket NFT generator</p>
-          <p className="sub-text">
+
+          <p className="sub-text disclaimer">
             This dApp let you mint a Ticket as NFT. You will receive a ticket
             with a random rarity (Common, rare, super-rare).
           </p>
