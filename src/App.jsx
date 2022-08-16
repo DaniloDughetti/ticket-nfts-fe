@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import './styles/App.css';
 import twitterLogo from './assets/twitter-logo.svg';
+import refreshIcon from './assets/refresh-icon.svg';
 import TicketNFTGenerator from './utils/TicketNFTGenerator.json';
 import { ethers } from 'ethers';
 import axios from 'axios';
@@ -70,22 +71,6 @@ const App = () => {
                     });
                   }
                 });
-
-                /*connectedContract.tokenURI(tokenIds[i]).then(token => {
-
-                  let url = token.replace("ipfs://", "https://ipfs.io/ipfs/");
-                  console.log(url);
-                  axios.get(url).then(response => {
-                    let _tokenList = tokenList;
-                    let _token = response.data;
-                    _token.tokenId = tokenIds[i];
-                    _tokenList.push(_token);
-                    console.log(_token);
-                    setTokenList(_tokenList);
-                    setIsTokensLoading(false);
-                  });
-
-                });*/
               }
             }
           }
@@ -150,7 +135,7 @@ const App = () => {
       });
       console.log('Connected', accounts[0]);
       setCurrentAccount(accounts[0]);
-      refreshTokenList(accounts[0]);
+      refreshTokenList();
     } catch (error) {
       console.log(error);
     }
@@ -175,6 +160,8 @@ const App = () => {
           setStatusEvent(
             `NFT edition ${counter}/${TOTAL_SUPPLY} minted! It can take a max of 10 min to show up on OpenSea. Here's the link: https://testnets.opensea.io/assets/${CONTRACT_ADDRESS}/${tokenId.toNumber()}`
           );
+
+          refreshTokenList();
         });
 
         setButtonStatus(false);
@@ -233,9 +220,6 @@ const App = () => {
   );
 
   const renderTokenList = () => {
-    console.log("**************************");
-    console.log("renderTokenList");
-    console.log("**************************");
     let _tokenList = [];
     for (var i = 0; i < tokenList.length; i++) {
       _tokenList.push(
@@ -282,6 +266,15 @@ const App = () => {
 						</button>
 
                 <div className="status-label">{statusEvent}</div>
+                <div className="viewTokensTitle"> Your minted tickets
+                  <button
+                    disabled={isTokensLoading}
+                    onClick={refreshTokenList}
+                    title="Refresh in case you don't see your token yet"
+                    className="refreshButton"
+                  >
+                    <img className="icon" src={refreshIcon}></img>
+                  </button></div>
                 <div className="tokenList">
                   {isTokensLoading === false ? renderTokenList() : <div></div>}
                 </div>
@@ -303,31 +296,5 @@ const App = () => {
     </div>
   );
 };
-/*
 
-          <button
-            onClick={getTokenList}
-            className="cta-button connect-wallet-button"
-          >
-            Get NFT List
-					</button>
-
-
-     {tokenListLength > 0 ? (
-            <div className="status-label">
-              rendered tokens:
-							{tokenList.map(
-                (token, index) =>
-                  +(
-                    <div key={index}>
-                      {' '}
-                      {token.tokenId._hex} - {token.tokenUrl}
-                    </div>
-                  )
-              )}
-            </div>
-          ) : (
-              <p>No tokens to show</p>
-            )}
-*/
 export default App;
