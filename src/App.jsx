@@ -7,14 +7,13 @@ import TicketNFTGenerator from './utils/TicketNFTGenerator.json';
 import { ethers } from 'ethers';
 import axios from 'axios';
 
-
 const TWITTER_HANDLE = 'danilodughetti';
 const TWITTER_LINK = `https://twitter.com/${TWITTER_HANDLE}`;
 const OPENSEA_LINK = '';
 const TOTAL_SUPPLY = 100;
 const CONTRACT_ADDRESS = '0x1739250Ee5db21Ce852F792B305287e97CA90857';
-const API_KEY = "TTH82UMFMKUSWYII2XESH728527BNFAG83";
-const BASE_URL = `https://api-goerli.etherscan.io/api?module=account&action=tokennfttx&contractaddress=${CONTRACT_ADDRESS}&page=1&offset=100&startblock=0&sort=asc&apikey=${API_KEY}`
+const API_KEY = 'TTH82UMFMKUSWYII2XESH728527BNFAG83';
+const BASE_URL = `https://api-goerli.etherscan.io/api?module=account&action=tokennfttx&contractaddress=${CONTRACT_ADDRESS}&page=1&offset=100&startblock=0&sort=asc&apikey=${API_KEY}`;
 
 const App = () => {
   const [currentAccount, setCurrentAccount] = useState('');
@@ -23,19 +22,29 @@ const App = () => {
   const [tokenList, setTokenList] = useState([]);
   const [isTokensLoading, setIsTokensLoading] = useState(true);
   const [tokensSupplyStatus, setTokensSupplyStatus] = useState({});
-  const [inputAddress, setInputAddress] = React.useState("");
+  const [inputAddress, setInputAddress] = React.useState([]);
   const [isTokenSendLoading, setIsTokenSendLoading] = React.useState(false);
 
-  const onChangeAddressHandler = event => {
-    setInputAddress(event.target.value);
+  const getAddressToSend = (event, index) => {
+    return getCurrentAccountCropped(inputAddress[index]);
+  }
+
+  const onChangeAddressHandler = (event, index) => {
+    const value = event.target.value;
+    let addresses = inputAddress;
+    addresses[index] = value;
+    setInputAddress(addresses);
     console.log(inputAddress);
   };
 
   const isAddressEqual = (address, addressToCompare) => {
-    return (address !== null && address !== undefined) &&
+    return (
+      address !== null &&
+      address !== undefined &&
       (addressToCompare !== null && addressToCompare !== undefined) &&
-      address.toUpperCase() === addressToCompare.toUpperCase();
-  }
+      address.toUpperCase() === addressToCompare.toUpperCase()
+    );
+  };
 
   const getTokensSupplyStatus = async () => {
     const provider = new ethers.providers.Web3Provider(ethereum);
@@ -49,16 +58,18 @@ const App = () => {
     contractCalls.push(connectedContract.getTokenCounter());
     contractCalls.push(connectedContract.getMaxSupply());
 
-    Promise.all(contractCalls).then(response => {
-      setTokensSupplyStatus({
-        currentToken: response[0].toNumber(),
-        maxSupply: response[1].toNumber()
+    Promise.all(contractCalls)
+      .then(response => {
+        setTokensSupplyStatus({
+          currentToken: response[0].toNumber(),
+          maxSupply: response[1].toNumber()
+        });
+      })
+      .catch(error => {
+        console.log(error);
+        setTokensSupplyStatus({ currentToken: 0, maxSupply: 0 });
       });
-    }).catch(error => {
-      console.log(error);
-      setTokensSupplyStatus({ currentToken: 0, maxSupply: 0 });
-    })
-  }
+  };
 
   const uniqByKeepFirst = (a, key) => {
     let seen = new Set();
@@ -66,24 +77,30 @@ const App = () => {
       let k = key(item);
       return seen.has(k) ? false : seen.add(k);
     });
-  }
+  };
 
-  const setTokenListFromEtherScan = async (address) => {
-    console.log("setTokenListFromEtherScan");
+  const setTokenListFromEtherScan = async address => {
+    console.log('setTokenListFromEtherScan');
     let baseUrl = BASE_URL + '&address=' + address;
     let tokenIds = [];
     console.log(baseUrl);
-    axios.get(baseUrl)
+    axios
+      .get(baseUrl)
       .then(response => {
         if (response !== null && response !== undefined) {
-
           for (let i = 0; i < response.data.result.length; i++) {
-            if (isAddressEqual(response.data.result[i].contractAddress, CONTRACT_ADDRESS)) {
+            if (
+              isAddressEqual(
+                response.data.result[i].contractAddress,
+                CONTRACT_ADDRESS
+              )
+            ) {
               tokenIds.push(response.data.result[i].tokenID);
             }
           }
         }
         tokenIds = uniqByKeepFirst(tokenIds, it => it);
+
         try {
           const { ethereum } = window;
 
@@ -97,48 +114,60 @@ const App = () => {
             );
 
             let tokenUrls = [];
-            if (tokenIds !== null && tokenIds !== undefined && tokenIds.length > 0) {
+            if (
+              tokenIds !== null &&
+              tokenIds !== undefined &&
+              tokenIds.length > 0
+            ) {
               setIsTokensLoading(true);
               for (let i = 0; i < tokenIds.length; i++) {
                 tokenUrls.push(connectedContract.tokenURIIfOwned(tokenIds[i]));
               }
 
-              Promise.all(tokenUrls).then(token => {
-                let axiosGets = [];
-                for (let i = 0; i < token.length; i++) {
-                  if (token[i] !== "") {
-                    let url = token[i].replace("ipfs://", "https://ipfs.io/ipfs/");
-                    console.log(url);
-                    axiosGets.push(axios.get(url));
-
-                    Promise.all(axiosGets).then(response => {
+              Promise.all(tokenUrls)
+                .then(token => {
+                  var ownedTokenIds = [];
+                  let axiosGets = [];
+                  for (let i = 0; i < token.length; i++) {
+                    if (token[i] !== '') {
+                      ownedTokenIds.push({tokenId: tokenIds[i]});
+                      let url = token[i].replace(
+                        'ipfs://',
+                        'https://ipfs.io/ipfs/'
+                      );
+                      axiosGets.push(axios.get(url));
+                    }
+                  }
+                  Promise.all(axiosGets)
+                    .then(response => {
                       let _tokenList = [];
                       for (let i = 0; i < response.length; i++) {
                         let _token = response[i].data;
-                        _token.tokenId = tokenIds[i];
+                        _token.tokenId = ownedTokenIds[i].tokenId;
                         _tokenList.push(_token);
                       }
                       setTokenList(_tokenList);
                       setIsTokensLoading(false);
-                    }).catch(error => console.log(error));
-                  }
-                }
-              }).catch(error => console.log(error));
+                    })
+                    .catch(error => console.log(error));
 
+                })
+                .catch(error => console.log(error));
             }
           }
         } catch (error) {
           console.log(error);
         }
-      }).catch(error => console.log(error));
-  }
+      })
+      .catch(error => console.log(error));
+  };
 
   const refreshTokenList = async () => {
     const { ethereum } = window;
     const accounts = await ethereum.request({ method: 'eth_accounts' });
     const account = accounts[0];
     setTokenListFromEtherScan(account);
-  }
+  };
 
   const checkIfWalletIsConnected = async () => {
     const { ethereum } = window;
@@ -171,7 +200,7 @@ const App = () => {
     }
   };
 
-  /*
+	/*
   * Implement your connectWallet method here
   */
   const connectWallet = async () => {
@@ -190,7 +219,6 @@ const App = () => {
       setCurrentAccount(accounts[0]);
       refreshTokenList();
       getTokensSupplyStatus();
-
     } catch (error) {
       console.log(error);
     }
@@ -220,7 +248,8 @@ const App = () => {
 
         connectedContract.on('TicketSent', (tokenId, from, to) => {
           alert(
-            `NFT edition ${tokenId}/${TOTAL_SUPPLY} correctly sent from address ${from} to address ${to}`);
+            `NFT edition ${tokenId}/${TOTAL_SUPPLY} correctly sent from address ${from} to address ${to}`
+          );
           refreshTokenList();
         });
 
@@ -279,10 +308,10 @@ const App = () => {
 		</button>
   );
 
-  /*
+	/*
     Function doesn't work: tokenId undefined
   */
-  const sendGift = async (tokenId) => {
+  const sendGift = async (event, tokenId, index) => {
     const provider = new ethers.providers.Web3Provider(ethereum);
     const signer = provider.getSigner();
     const connectedContract = new ethers.Contract(
@@ -291,59 +320,67 @@ const App = () => {
       signer
     );
     setIsTokenSendLoading(true);
-    connectedContract.givesToken(tokenId, inputAddress).then(response => {
-      refreshTokenList();
-      setIsTokenSendLoading(false);
-    })
+    connectedContract
+      .givesToken(tokenId, inputAddress[index])
+      .then(() => {
+        refreshTokenList();
+        setIsTokenSendLoading(false);
+      })
       .catch(error => {
         alert(error.message);
         console.log(error);
         setIsTokenSendLoading(false);
       });
-
-  }
+  };
 
   const renderTokenList = () => {
-    let _tokenList = [];
-    for (var i = 0; i < tokenList.length; i++) {
-      var _tokenId = tokenList[i].tokenId;
-      _tokenList.push(
-        <div className="tokenItem" key={i}>
-          <div className="tokenTitle">
-            {tokenList[i].name}
-          </div>
+    let tokenListToRender = [];
+    tokenList.map((token, renderIndex) => {
+      tokenListToRender.push(
+        <div className="tokenItem" key={renderIndex}>
+          <div className="tokenTitle">{token.name}</div>
           <div className="tokenDescription bold">
-            Edition {tokenList[i].tokenId}/{tokensSupplyStatus.maxSupply}
+            Edition {token.tokenId}/{
+              tokensSupplyStatus.maxSupply
+            }
           </div>
           <div className="tokenDescription">
-            {tokenList[i].description}
+            {token.description}
           </div>
           <div className="tokenImage">
-            <img src={tokenList[i].image}></img>
+            <img src={token.image} />
           </div>
           {isTokenSendLoading === false ? (
             <div className="tokenDescription">
               Send to a friend:
-            <input
+							<input
+                key={renderIndex}
                 type="text"
                 className="addressInput"
-                onChange={onChangeAddressHandler}
-                value={inputAddress}
+                onChange={(e) => onChangeAddressHandler(e, renderIndex)}
+                value={inputAddress[renderIndex]}
               />
               <button
-                key={_tokenId}
-                onClick={() => sendGift(_tokenId)}
+                key={'token_' + token.tokenId}
+                onClick={(e) => sendGift(e, token.tokenId, renderIndex)}
                 title="Send token"
                 className="sendButton"
               >
-                <img className="icon" src={sendIcon}></img>
+                <img className="icon" src={sendIcon} />
               </button>
             </div>
-          ) : (<div>Sending token to {getCurrentAccountCropped(inputAddress)}</div>)}
-        </div >
+          ) : (
+              <div>
+                Sending token to{' '}
+                {(e) =>
+                  getAddressToSend(e, renderIndex)
+                }
+              </div>
+            )}
+        </div>
       );
-    }
-    return _tokenList;
+    });
+    return tokenListToRender;
   };
 
   useEffect(() => {
@@ -352,10 +389,18 @@ const App = () => {
     getTokensSupplyStatus();
   }, []);
 
-  const getCurrentAccountCropped = (account) => {
-
-    return account.substring(0, 3) + "..." + account.substring(account.length - 3, account.length);
-  }
+  const getCurrentAccountCropped = account => {
+    try {
+      return (
+        account.substring(0, 3) +
+        '...' +
+        account.substring(account.length - 3, account.length)
+      );
+    } catch (error) {
+      console.log(error);
+      return '';
+    }
+  };
 
   return (
     <div className="App">
@@ -376,13 +421,12 @@ const App = () => {
       </div>
       <div className="container">
         <div className="header-container">
-
           <p className="sub-text disclaimer">
             This dApp let you mint a Ticket as NFT. You will receive a ticket
-            with a random rarity (Common, rare, super-rare).
-          </p>
+						with a random rarity (Common, rare, super-rare).
+					</p>
           {currentAccount === '' ? (
-            <div></div>
+            <div />
           ) : (
               <div>
                 <button
@@ -390,21 +434,26 @@ const App = () => {
                   onClick={askContractToMintToken}
                   className="cta-button connect-wallet-button"
                 >
-                  Mint Ticket {tokensSupplyStatus.currentToken}/{tokensSupplyStatus.maxSupply}
+                  Mint Ticket {tokensSupplyStatus.currentToken}/{
+                    tokensSupplyStatus.maxSupply
+                  }
                 </button>
 
                 <div className="status-label">{statusEvent}</div>
-                <div className="viewTokensTitle"> Your minted tickets
-                  <button
+                <div className="viewTokensTitle">
+                  {' '}
+                  Your minted tickets
+								<button
                     disabled={isTokensLoading}
                     onClick={refreshTokenList}
                     title="Refresh in case you don't see your token yet"
                     className="refreshButton"
                   >
-                    <img className="icon" src={refreshIcon}></img>
-                  </button></div>
+                    <img className="icon" src={refreshIcon} />
+                  </button>
+                </div>
                 <div className="tokenList">
-                  {isTokensLoading === false ? renderTokenList() : <div></div>}
+                  {isTokensLoading === false ? renderTokenList() : <div />}
                 </div>
               </div>
             )}
@@ -420,8 +469,8 @@ const App = () => {
             rel="noreferrer"
           >{`built by @${TWITTER_HANDLE}`}</a>
         </div>
-      </div >
-    </div >
+      </div>
+    </div>
   );
 };
 
