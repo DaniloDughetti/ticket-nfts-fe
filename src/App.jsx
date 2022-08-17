@@ -12,7 +12,7 @@ const TWITTER_HANDLE = 'danilodughetti';
 const TWITTER_LINK = `https://twitter.com/${TWITTER_HANDLE}`;
 const OPENSEA_LINK = '';
 const TOTAL_SUPPLY = 100;
-const CONTRACT_ADDRESS = '0xefc3060AF6c2147C044E169Bdcd7dACdF25418a0';
+const CONTRACT_ADDRESS = '0x1739250Ee5db21Ce852F792B305287e97CA90857';
 const API_KEY = "TTH82UMFMKUSWYII2XESH728527BNFAG83";
 const BASE_URL = `https://api-goerli.etherscan.io/api?module=account&action=tokennfttx&contractaddress=${CONTRACT_ADDRESS}&page=1&offset=100&startblock=0&sort=asc&apikey=${API_KEY}`
 
@@ -60,6 +60,14 @@ const App = () => {
     })
   }
 
+  const uniqByKeepFirst = (a, key) => {
+    let seen = new Set();
+    return a.filter(item => {
+      let k = key(item);
+      return seen.has(k) ? false : seen.add(k);
+    });
+  }
+
   const setTokenListFromEtherScan = async (address) => {
     console.log("setTokenListFromEtherScan");
     let baseUrl = BASE_URL + '&address=' + address;
@@ -75,6 +83,7 @@ const App = () => {
             }
           }
         }
+        tokenIds = uniqByKeepFirst(tokenIds, it => it);
         try {
           const { ethereum } = window;
 
@@ -86,17 +95,18 @@ const App = () => {
               TicketNFTGenerator.abi,
               signer
             );
-            let tokenUrls = [];
-            console.log("tokenIds");
-            console.log(tokenIds);
-            if (tokenIds !== null && tokenIds !== undefined && tokenIds.length > 0) {
 
+            let tokenUrls = [];
+            if (tokenIds !== null && tokenIds !== undefined && tokenIds.length > 0) {
               setIsTokensLoading(true);
               for (let i = 0; i < tokenIds.length; i++) {
-                tokenUrls.push(connectedContract.tokenURI(tokenIds[i]));
-                Promise.all(tokenUrls).then(token => {
-                  let axiosGets = [];
-                  for (let i = 0; i < token.length; i++) {
+                tokenUrls.push(connectedContract.tokenURIIfOwned(tokenIds[i]));
+              }
+
+              Promise.all(tokenUrls).then(token => {
+                let axiosGets = [];
+                for (let i = 0; i < token.length; i++) {
+                  if (token[i] !== "") {
                     let url = token[i].replace("ipfs://", "https://ipfs.io/ipfs/");
                     console.log(url);
                     axiosGets.push(axios.get(url));
@@ -112,8 +122,9 @@ const App = () => {
                       setIsTokensLoading(false);
                     }).catch(error => console.log(error));
                   }
-                }).catch(error => console.log(error));
-              }
+                }
+              }).catch(error => console.log(error));
+
             }
           }
         } catch (error) {
@@ -207,6 +218,12 @@ const App = () => {
           getTokensSupplyStatus();
         });
 
+        connectedContract.on('TicketSent', (tokenId, from, to) => {
+          alert(
+            `NFT edition ${tokenId}/${TOTAL_SUPPLY} correctly sent from address ${from} to address ${to}`);
+          refreshTokenList();
+        });
+
         setButtonStatus(false);
         console.log('Setup event listener!');
       } else {
@@ -266,9 +283,6 @@ const App = () => {
     Function doesn't work: tokenId undefined
   */
   const sendGift = async (tokenId) => {
-    console.log("***************************");
-    console.log(tokenId);
-    console.log("***************************");
     const provider = new ethers.providers.Web3Provider(ethereum);
     const signer = provider.getSigner();
     const connectedContract = new ethers.Contract(
@@ -278,12 +292,11 @@ const App = () => {
     );
     setIsTokenSendLoading(true);
     connectedContract.givesToken(tokenId, inputAddress).then(response => {
-      console.log("OK");
-      console.log(response);
       refreshTokenList();
       setIsTokenSendLoading(false);
     })
       .catch(error => {
+        alert(error.message);
         console.log(error);
         setIsTokenSendLoading(false);
       });
@@ -293,7 +306,7 @@ const App = () => {
   const renderTokenList = () => {
     let _tokenList = [];
     for (var i = 0; i < tokenList.length; i++) {
-      let call = () => sendGift(tokenList[i].tokenId);
+      var _tokenId = tokenList[i].tokenId;
       _tokenList.push(
         <div className="tokenItem" key={i}>
           <div className="tokenTitle">
@@ -318,14 +331,15 @@ const App = () => {
                 value={inputAddress}
               />
               <button
-                onClick={call}
+                key={_tokenId}
+                onClick={() => sendGift(_tokenId)}
                 title="Send token"
                 className="sendButton"
               >
                 <img className="icon" src={sendIcon}></img>
               </button>
             </div>
-          ) : (<div>Sending token to {inputAddress}</div>)}
+          ) : (<div>Sending token to {getCurrentAccountCropped(inputAddress)}</div>)}
         </div >
       );
     }
@@ -376,7 +390,7 @@ const App = () => {
                   onClick={askContractToMintToken}
                   className="cta-button connect-wallet-button"
                 >
-                  Mint Ticket {tokensSupplyStatus.currentToken + 1}/{tokensSupplyStatus.maxSupply}
+                  Mint Ticket {tokensSupplyStatus.currentToken}/{tokensSupplyStatus.maxSupply}
                 </button>
 
                 <div className="status-label">{statusEvent}</div>
