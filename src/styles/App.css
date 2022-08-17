@@ -79,7 +79,7 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  padding-bottom: 1%;
+  padding-bottom: 1%px;
   box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
   backdrop-filter: blur(7.6px);
   position: fixed;
@@ -92,6 +92,10 @@
   height: 35px;
 }
 
+.bold {
+  font-weight: bold;
+}
+
 .footer-text {
   color: white;
   font-size: 16px;
@@ -100,7 +104,7 @@
 .status-label {
     color: white;
     font-weight: bold;
-    margin-top: 5%;
+    margin-top: 2%;
     text-align: center;
 }
 .tokenList {
@@ -123,6 +127,7 @@
 }
 .tokenImage {
   text-align: center;
+  margin-top: 4%;
 }
 
 .tokenImage img{
@@ -134,7 +139,7 @@
   font-size: 150%;
   font-weight: bold;
   color: white;
-  margin-bottom: 6%;
+  margin-bottom: 2%;
 }
 
 .viewTokensTitle img {
@@ -142,7 +147,15 @@
   position: relative;
   top: 3px;
   left: 10px;
-  cursor: pointer
+  cursor: pointer;
+}
+.sendButton {
+width: 11%;
+    background: none;
+    position: relative;
+    top: 5px;
+    cursor: pointer;
+    border: none;
 }
 .refreshButton {
   background: none;
@@ -163,11 +176,19 @@
   float: right;
   margin: 0.5%;
 }
-.navbar p {
+.navbar .gradient-text {
   font-size: 200%;
   float: left;
   margin-left: 1%;
   margin-top: 0.7%;
+}
+.addressInput {
+  background: none;
+  border-top: none;
+  border-left: none;
+  border-right: none;
+  border-bottom-color: white;
+  margin-left: 3%;
 }
 /* KeyFrames */
 @-webkit-keyframes gradient-animation {

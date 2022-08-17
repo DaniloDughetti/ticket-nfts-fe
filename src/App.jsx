@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import './styles/App.css';
 import twitterLogo from './assets/twitter-logo.svg';
 import refreshIcon from './assets/refresh-icon.svg';
+import sendIcon from './assets/send-icon.svg';
 import TicketNFTGenerator from './utils/TicketNFTGenerator.json';
 import { ethers } from 'ethers';
 import axios from 'axios';
@@ -22,6 +23,13 @@ const App = () => {
   const [tokenList, setTokenList] = useState([]);
   const [isTokensLoading, setIsTokensLoading] = useState(true);
   const [tokensSupplyStatus, setTokensSupplyStatus] = useState({});
+  const [inputAddress, setInputAddress] = React.useState("");
+  const [isTokenSendLoading, setIsTokenSendLoading] = React.useState(false);
+
+  const onChangeAddressHandler = event => {
+    setInputAddress(event.target.value);
+    console.log(inputAddress);
+  };
 
   const isAddressEqual = (address, addressToCompare) => {
     return (address !== null && address !== undefined) &&
@@ -183,7 +191,6 @@ const App = () => {
       const { ethereum } = window;
 
       if (ethereum) {
-        // Same stuff again
         const provider = new ethers.providers.Web3Provider(ethereum);
         const signer = provider.getSigner();
         const connectedContract = new ethers.Contract(
@@ -255,13 +262,45 @@ const App = () => {
 		</button>
   );
 
+  /*
+    Function doesn't work: tokenId undefined
+  */
+  const sendGift = async (tokenId) => {
+    console.log("***************************");
+    console.log(tokenId);
+    console.log("***************************");
+    const provider = new ethers.providers.Web3Provider(ethereum);
+    const signer = provider.getSigner();
+    const connectedContract = new ethers.Contract(
+      CONTRACT_ADDRESS,
+      TicketNFTGenerator.abi,
+      signer
+    );
+    setIsTokenSendLoading(true);
+    connectedContract.givesToken(tokenId, inputAddress).then(response => {
+      console.log("OK");
+      console.log(response);
+      refreshTokenList();
+      setIsTokenSendLoading(false);
+    })
+      .catch(error => {
+        console.log(error);
+        setIsTokenSendLoading(false);
+      });
+
+  }
+
   const renderTokenList = () => {
     let _tokenList = [];
     for (var i = 0; i < tokenList.length; i++) {
+      let call = () => sendGift(tokenList[i].tokenId);
       _tokenList.push(
         <div className="tokenItem" key={i}>
           <div className="tokenTitle">
             {tokenList[i].name}
+          </div>
+          <div className="tokenDescription bold">
+            Edition {tokenList[i].tokenId}/{tokensSupplyStatus.maxSupply}
           </div>
           <div className="tokenDescription">
             {tokenList[i].description}
@@ -269,7 +308,25 @@ const App = () => {
           <div className="tokenImage">
             <img src={tokenList[i].image}></img>
           </div>
-        </div>
+          {isTokenSendLoading === false ? (
+            <div className="tokenDescription">
+              Send to a friend:
+            <input
+                type="text"
+                className="addressInput"
+                onChange={onChangeAddressHandler}
+                value={inputAddress}
+              />
+              <button
+                onClick={call}
+                title="Send token"
+                className="sendButton"
+              >
+                <img className="icon" src={sendIcon}></img>
+              </button>
+            </div>
+          ) : (<div>Sending token to {inputAddress}</div>)}
+        </div >
       );
     }
     return _tokenList;
@@ -295,7 +352,7 @@ const App = () => {
         ) : (
             <div>
               <button
-                disabled="true"
+                disabled={true}
                 className="cta-button connect-wallet-button"
               >
                 {getCurrentAccountCropped(currentAccount)}
@@ -311,7 +368,7 @@ const App = () => {
             with a random rarity (Common, rare, super-rare).
           </p>
           {currentAccount === '' ? (
-            renderNotConnectedContainer()
+            <div></div>
           ) : (
               <div>
                 <button
@@ -319,7 +376,7 @@ const App = () => {
                   onClick={askContractToMintToken}
                   className="cta-button connect-wallet-button"
                 >
-                  Mint Ticket {tokensSupplyStatus.currentToken} / {tokensSupplyStatus.maxSupply}
+                  Mint Ticket {tokensSupplyStatus.currentToken + 1}/{tokensSupplyStatus.maxSupply}
                 </button>
 
                 <div className="status-label">{statusEvent}</div>
@@ -349,8 +406,8 @@ const App = () => {
             rel="noreferrer"
           >{`built by @${TWITTER_HANDLE}`}</a>
         </div>
-      </div>
-    </div>
+      </div >
+    </div >
   );
 };
 
