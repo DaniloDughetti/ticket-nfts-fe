@@ -24,9 +24,11 @@ const App = () => {
   const [tokensSupplyStatus, setTokensSupplyStatus] = useState({});
   const [inputAddress, setInputAddress] = React.useState([]);
   const [isTokenSendLoading, setIsTokenSendLoading] = React.useState(false);
+  const [addressSending, setAddressSending] = useState('');
 
-  const getAddressToSend = (event, index) => {
-    return getCurrentAccountCropped(inputAddress[index]);
+  const getAddressToSend = (index) => {
+    let address = getCurrentAccountCropped(addressSending);
+    return <div key={"account" + index}>{address}</div>;
   }
 
   const onChangeAddressHandler = (event, index) => {
@@ -34,7 +36,6 @@ const App = () => {
     let addresses = inputAddress;
     addresses[index] = value;
     setInputAddress(addresses);
-    console.log(inputAddress);
   };
 
   const isAddressEqual = (address, addressToCompare) => {
@@ -80,10 +81,8 @@ const App = () => {
   };
 
   const setTokenListFromEtherScan = async address => {
-    console.log('setTokenListFromEtherScan');
     let baseUrl = BASE_URL + '&address=' + address;
     let tokenIds = [];
-    console.log(baseUrl);
     axios
       .get(baseUrl)
       .then(response => {
@@ -225,7 +224,7 @@ const App = () => {
   };
 
   const setupEventListener = async () => {
-    console.log('setupEventListener');
+    console.log('setupEventListener started');
     try {
       const { ethereum } = window;
 
@@ -250,11 +249,12 @@ const App = () => {
           alert(
             `NFT edition ${tokenId}/${TOTAL_SUPPLY} correctly sent from address ${from} to address ${to}`
           );
+          setIsTokenSendLoading(false);
           refreshTokenList();
         });
 
         setButtonStatus(false);
-        console.log('Setup event listener!');
+        console.log('Setup event done');
       } else {
         console.log("Ethereum object doesn't exist!");
       }
@@ -320,11 +320,11 @@ const App = () => {
       signer
     );
     setIsTokenSendLoading(true);
+    setAddressSending(inputAddress[index]);
     connectedContract
       .givesToken(tokenId, inputAddress[index])
       .then(() => {
         refreshTokenList();
-        setIsTokenSendLoading(false);
       })
       .catch(error => {
         alert(error.message);
@@ -351,7 +351,7 @@ const App = () => {
             <img src={token.image} />
           </div>
           {isTokenSendLoading === false ? (
-            <div className="tokenDescription">
+            <div key={"description" + renderIndex} className="tokenDescription">
               Send to a friend:
 							<input
                 key={renderIndex}
@@ -370,12 +370,16 @@ const App = () => {
               </button>
             </div>
           ) : (
-              <div>
+          
+            <div key={"description" + renderIndex} className="tokenDescription">
+              <div 
+                key={"SendingToken" + renderIndex}>
                 Sending token to{' '}
-                {(e) =>
-                  getAddressToSend(e, renderIndex)
+                {
+                  getAddressToSend(renderIndex)
                 }
               </div>
+            </div>
             )}
         </div>
       );
