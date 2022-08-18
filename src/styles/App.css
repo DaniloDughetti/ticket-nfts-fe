@@ -37,6 +37,7 @@
   background-clip: text;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
+  display: inline;
 }
 
 .cta-button {
@@ -190,6 +191,19 @@ width: 11%;
   color: white;
   border-bottom-color: white;
   margin-left: 3%;
+}
+.status-text {
+  display: inline;
+  float: right;
+  font-weight: bold;
+  padding-top: 0.9%;
+  padding-right: 0.6%;
+   background: -webkit-linear-gradient(left, #c658a3, #35aee2);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.wallet-button {
+  display: inline;
 }
 /* KeyFrames */
 @-webkit-keyframes gradient-animation {

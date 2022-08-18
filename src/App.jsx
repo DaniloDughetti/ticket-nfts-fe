@@ -11,7 +11,7 @@ const TWITTER_HANDLE = 'danilodughetti';
 const TWITTER_LINK = `https://twitter.com/${TWITTER_HANDLE}`;
 const OPENSEA_LINK = '';
 const TOTAL_SUPPLY = 100;
-const CONTRACT_ADDRESS = '0x1739250Ee5db21Ce852F792B305287e97CA90857';
+const CONTRACT_ADDRESS = '0x3a8bfA75076B7aF21c8671854B0B33764c86c638';
 const API_KEY = 'TTH82UMFMKUSWYII2XESH728527BNFAG83';
 const BASE_URL = `https://api-goerli.etherscan.io/api?module=account&action=tokennfttx&contractaddress=${CONTRACT_ADDRESS}&page=1&offset=100&startblock=0&sort=asc&apikey=${API_KEY}`;
 
@@ -25,7 +25,7 @@ const App = () => {
   const [inputAddress, setInputAddress] = React.useState([]);
   const [isTokenSendLoading, setIsTokenSendLoading] = React.useState(false);
   const [addressSending, setAddressSending] = useState('');
-
+  
   const getAddressToSend = (index) => {
     let address = getCurrentAccountCropped(addressSending);
     return <div key={"account" + index}>{address}</div>;
@@ -58,17 +58,22 @@ const App = () => {
     let contractCalls = [];
     contractCalls.push(connectedContract.getTokenCounter());
     contractCalls.push(connectedContract.getMaxSupply());
+    contractCalls.push(connectedContract.getMintPrice());
 
     Promise.all(contractCalls)
       .then(response => {
+
+        let mintPrice = response[2] !== null && response[2] !== undefined ?ethers.utils.formatUnits(response[2].toNumber(), "ether") : null;
+        
         setTokensSupplyStatus({
           currentToken: response[0].toNumber(),
-          maxSupply: response[1].toNumber()
+          maxSupply: response[1].toNumber(),
+          mintPrice: mintPrice
         });
       })
       .catch(error => {
         console.log(error);
-        setTokensSupplyStatus({ currentToken: 0, maxSupply: 0 });
+        setTokensSupplyStatus({ currentToken: null, maxSupply: null, mintPrice: null });
       });
   };
 
@@ -278,7 +283,7 @@ const App = () => {
         );
 
         console.log('Going to pop wallet now to pay gas...');
-        let nftTxn = await connectedContract.mintTicket({ gasLimit: 1000000 });
+        let nftTxn = await connectedContract.mintTicket({ value:ethers.utils.parseEther(tokensSupplyStatus.mintPrice), gasLimit: 1000000 });
         setStatusEvent("I'm minting your NFT...");
 
         console.log('Mining...please wait.');
@@ -392,7 +397,7 @@ const App = () => {
     refreshTokenList();
     getTokensSupplyStatus();
   }, []);
-
+  
   const getCurrentAccountCropped = account => {
     try {
       return (
@@ -409,17 +414,20 @@ const App = () => {
   return (
     <div className="App">
       <div className="navbar">
-        <p className="header gradient-text">Ticket NFT generator</p>
+        <div className="header gradient-text">Ticket NFT generator</div>
         {currentAccount === '' ? (
           renderNotConnectedContainer()
         ) : (
-            <div>
+            <div className="wallet-button">
               <button
                 disabled={true}
                 className="cta-button connect-wallet-button"
               >
                 {getCurrentAccountCropped(currentAccount)}
               </button>
+              <div className="status-text">
+               {tokensSupplyStatus.currentToken}/{
+                    tokensSupplyStatus.maxSupply} minted <br/>{tokensSupplyStatus.mintPrice} ETH to mint</div>
             </div>
           )}
       </div>
@@ -438,10 +446,8 @@ const App = () => {
                   onClick={askContractToMintToken}
                   className="cta-button connect-wallet-button"
                 >
-                  Mint Ticket {tokensSupplyStatus.currentToken}/{
-                    tokensSupplyStatus.maxSupply
-                  }
-                </button>
+                  Mint Ticket
+                 </button>
 
                 <div className="status-label">{statusEvent}</div>
                 <div className="viewTokensTitle">
