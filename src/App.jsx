@@ -11,21 +11,22 @@ const TWITTER_HANDLE = 'danilodughetti';
 const TWITTER_LINK = `https://twitter.com/${TWITTER_HANDLE}`;
 const OPENSEA_LINK = '';
 const TOTAL_SUPPLY = 100;
-const CONTRACT_ADDRESS = '0x3a8bfA75076B7aF21c8671854B0B33764c86c638';
+const CONTRACT_ADDRESS = '0x2C96711F22DC3484fF7c60D04115ebdA8532a452';
 const API_KEY = 'TTH82UMFMKUSWYII2XESH728527BNFAG83';
 const BASE_URL = `https://api-goerli.etherscan.io/api?module=account&action=tokennfttx&contractaddress=${CONTRACT_ADDRESS}&page=1&offset=100&startblock=0&sort=asc&apikey=${API_KEY}`;
 
 const App = () => {
   const [currentAccount, setCurrentAccount] = useState('');
   const [statusEvent, setStatusEvent] = useState('');
-  const [buttonStatus, setButtonStatus] = useState(false);
+  const [buttonRandomStatus, setButtonRandomStatus] = useState('');
+  const [buttonMintStatus, setButtonMintStatus] = useState(false);
   const [tokenList, setTokenList] = useState([]);
   const [isTokensLoading, setIsTokensLoading] = useState(true);
   const [tokensSupplyStatus, setTokensSupplyStatus] = useState({});
   const [inputAddress, setInputAddress] = React.useState([]);
   const [isTokenSendLoading, setIsTokenSendLoading] = React.useState(false);
   const [addressSending, setAddressSending] = useState('');
-  
+
   const getAddressToSend = (index) => {
     let address = getCurrentAccountCropped(addressSending);
     return <div key={"account" + index}>{address}</div>;
@@ -59,21 +60,23 @@ const App = () => {
     contractCalls.push(connectedContract.getTokenCounter());
     contractCalls.push(connectedContract.getMaxSupply());
     contractCalls.push(connectedContract.getMintPrice());
+    contractCalls.push(connectedContract.getRandomNumber());
 
     Promise.all(contractCalls)
       .then(response => {
 
-        let mintPrice = response[2] !== null && response[2] !== undefined ?ethers.utils.formatUnits(response[2].toNumber(), "ether") : null;
-        
+        let mintPrice = response[2] !== null && response[2] !== undefined ? ethers.utils.formatUnits(response[2].toNumber(), "ether") : null;
+
         setTokensSupplyStatus({
           currentToken: response[0].toNumber(),
           maxSupply: response[1].toNumber(),
-          mintPrice: mintPrice
+          mintPrice: mintPrice,
+          randomNumber: response[3].toNumber()
         });
       })
       .catch(error => {
         console.log(error);
-        setTokensSupplyStatus({ currentToken: null, maxSupply: null, mintPrice: null });
+        setTokensSupplyStatus({ currentToken: null, maxSupply: null, mintPrice: null, randomNumber: null });
       });
   };
 
@@ -134,7 +137,7 @@ const App = () => {
                   let axiosGets = [];
                   for (let i = 0; i < token.length; i++) {
                     if (token[i] !== '') {
-                      ownedTokenIds.push({tokenId: tokenIds[i]});
+                      ownedTokenIds.push({ tokenId: tokenIds[i] });
                       let url = token[i].replace(
                         'ipfs://',
                         'https://ipfs.io/ipfs/'
@@ -228,6 +231,16 @@ const App = () => {
     }
   };
 
+  const getRarity = (randomNumber) => {
+    if (randomNumber >= 60 && randomNumber <= 90) {
+      return "Rare ticket (" + randomNumber + ")";
+    } else if (randomNumber > 90) {
+      return "Super rare ticket (" + randomNumber + ")";
+    } else {
+      return "Common ticket (" + randomNumber + ")";
+    }
+  }
+
   const setupEventListener = async () => {
     console.log('setupEventListener started');
     try {
@@ -241,6 +254,16 @@ const App = () => {
           TicketNFTGenerator.abi,
           signer
         );
+
+        connectedContract.on('TicketRandomnessGenerated', (randomNumber) => {
+          console.log("TicketRandomnessGenerated reached");
+          setStatusEvent(
+            `Ok, random value changed in ${randomNumber}, press mint button to mint your NFT`
+          );
+          let _tokensSupplyStatus = tokensSupplyStatus;
+          _tokensSupplyStatus.randomNumber = randomNumber;
+          setTokensSupplyStatus(_tokensSupplyStatus);
+        });
 
         connectedContract.on('TicketMinted', (from, tokenId, counter) => {
           setStatusEvent(
@@ -258,7 +281,7 @@ const App = () => {
           refreshTokenList();
         });
 
-        setButtonStatus(false);
+        setButtonMintStatus(false);
         console.log('Setup event done');
       } else {
         console.log("Ethereum object doesn't exist!");
@@ -268,8 +291,8 @@ const App = () => {
     }
   };
 
-  const askContractToMintToken = async () => {
-    setButtonStatus(true);
+  const askContractToGenerateRandomness = async () => {
+    setButtonRandomStatus(true);
     try {
       const { ethereum } = window;
 
@@ -283,7 +306,44 @@ const App = () => {
         );
 
         console.log('Going to pop wallet now to pay gas...');
-        let nftTxn = await connectedContract.mintTicket({ value:ethers.utils.parseEther(tokensSupplyStatus.mintPrice), gasLimit: 1000000 });
+        setStatusEvent("I'm pulling out a random ticket, please wait...");
+        let nftTxn = connectedContract.requestRandomWords({ gasLimit: 1000000 }).then((response) => {
+          console.log("Random request response ok");
+          console.log(response);
+        }).catch(error => {
+          console.log("Error in retrieving random request");
+          console.log(error);
+        });
+
+        console.log('Getting a random number through ChainLink, please wait...');
+        //await nftTxn.wait();
+
+      } else {
+        console.log("Ethereum object doesn't exist!");
+        setButtonRandomStatus(false);
+      }
+    } catch (error) {
+      console.log(error);
+      setButtonRandomStatus(false);
+    }
+  };
+
+  const askContractToMintToken = async () => {
+    setButtonMintStatus(true);
+    try {
+      const { ethereum } = window;
+
+      if (ethereum) {
+        const provider = new ethers.providers.Web3Provider(ethereum);
+        const signer = provider.getSigner();
+        const connectedContract = new ethers.Contract(
+          CONTRACT_ADDRESS,
+          TicketNFTGenerator.abi,
+          signer
+        );
+
+        console.log('Going to pop wallet now to pay gas...');
+        let nftTxn = await connectedContract.mintTicket({ value: ethers.utils.parseEther(tokensSupplyStatus.mintPrice), gasLimit: 1000000 });
         setStatusEvent("I'm minting your NFT...");
 
         console.log('Mining...please wait.');
@@ -296,11 +356,10 @@ const App = () => {
         );
       } else {
         console.log("Ethereum object doesn't exist!");
-        setButtonStatus(false);
+        setButtonMintStatus(false);
       }
     } catch (error) {
-      console.log(error);
-      setButtonStatus(false);
+      setButtonMintStatus(false);
     }
   };
 
@@ -375,16 +434,16 @@ const App = () => {
               </button>
             </div>
           ) : (
-          
-            <div key={"description" + renderIndex} className="tokenDescription">
-              <div 
-                key={"SendingToken" + renderIndex}>
-                Sending token to{' '}
-                {
-                  getAddressToSend(renderIndex)
-                }
+
+              <div key={"description" + renderIndex} className="tokenDescription">
+                <div
+                  key={"SendingToken" + renderIndex}>
+                  Sending token to{' '}
+                  {
+                    getAddressToSend(renderIndex)
+                  }
+                </div>
               </div>
-            </div>
             )}
         </div>
       );
@@ -397,7 +456,7 @@ const App = () => {
     refreshTokenList();
     getTokensSupplyStatus();
   }, []);
-  
+
   const getCurrentAccountCropped = account => {
     try {
       return (
@@ -426,10 +485,14 @@ const App = () => {
                 {getCurrentAccountCropped(currentAccount)}
               </button>
               <div className="status-text">
-               {tokensSupplyStatus.currentToken}/{
-                    tokensSupplyStatus.maxSupply} minted <br/>{tokensSupplyStatus.mintPrice} ETH to mint</div>
+                {tokensSupplyStatus.currentToken}/{
+                  tokensSupplyStatus.maxSupply} minted <br />{tokensSupplyStatus.mintPrice} ETH to mint <br />
+                {getRarity(tokensSupplyStatus.randomNumber)} last sorted</div>
             </div>
           )}
+        <div className="status-navbar">
+          <div className="status-label">{statusEvent}</div>
+        </div>
       </div>
       <div className="container">
         <div className="header-container">
@@ -442,14 +505,20 @@ const App = () => {
           ) : (
               <div>
                 <button
-                  disabled={buttonStatus}
+                  disabled={buttonRandomStatus}
+                  onClick={askContractToGenerateRandomness}
+                  className="cta-button connect-wallet-button"
+                >
+                  Mix Tickets
+                 </button>
+                <p className="secondary-text">Click the button over to change the possibility to reach different ticket rarity: If you don't do this you will pull a common ticket</p>
+                <button
+                  disabled={buttonMintStatus}
                   onClick={askContractToMintToken}
                   className="cta-button connect-wallet-button"
                 >
                   Mint Ticket
                  </button>
-
-                <div className="status-label">{statusEvent}</div>
                 <div className="viewTokensTitle">
                   {' '}
                   Your minted tickets

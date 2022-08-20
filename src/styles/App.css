@@ -164,6 +164,7 @@ width: 11%;
   height: 100%;
   display: contents;
 }
+
 .navbar {
   overflow: hidden;
   background-color: rgba(109, 106, 117,0.3);
@@ -198,12 +199,22 @@ width: 11%;
   font-weight: bold;
   padding-top: 0.9%;
   padding-right: 0.6%;
+  font-size: 70%;
    background: -webkit-linear-gradient(left, #c658a3, #35aee2);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 .wallet-button {
   display: inline;
+}
+
+.secondary-text {
+  font-size: 100%;
+  font-weight: bold;
+  color: white;
+  padding-left: 25%;
+  padding-right: 25%;
+  margin-top: 2%;
 }
 /* KeyFrames */
 @-webkit-keyframes gradient-animation {
