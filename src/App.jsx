@@ -11,7 +11,7 @@ const TWITTER_HANDLE = 'danilodughetti';
 const TWITTER_LINK = `https://twitter.com/${TWITTER_HANDLE}`;
 const OPENSEA_LINK = '';
 const TOTAL_SUPPLY = 100;
-const CONTRACT_ADDRESS = '0x2C96711F22DC3484fF7c60D04115ebdA8532a452';
+const CONTRACT_ADDRESS = '0xD601A33bC1dA159b5A72D276643F612Aa2977C91';
 const API_KEY = 'TTH82UMFMKUSWYII2XESH728527BNFAG83';
 const BASE_URL = `https://api-goerli.etherscan.io/api?module=account&action=tokennfttx&contractaddress=${CONTRACT_ADDRESS}&page=1&offset=100&startblock=0&sort=asc&apikey=${API_KEY}`;
 
@@ -66,7 +66,6 @@ const App = () => {
       .then(response => {
 
         let mintPrice = response[2] !== null && response[2] !== undefined ? ethers.utils.formatUnits(response[2].toNumber(), "ether") : null;
-
         setTokensSupplyStatus({
           currentToken: response[0].toNumber(),
           maxSupply: response[1].toNumber(),
@@ -256,19 +255,26 @@ const App = () => {
         );
 
         connectedContract.on('TicketRandomnessGenerated', (randomNumber) => {
+          let _randomNumber = 1;
+          try {
+            _randomNumber = randomNumber.toNumber();
+          } catch (error) {
+            console.log(error);
+          }
+          getTokensSupplyStatus();
+          setButtonRandomStatus(false);
+
           console.log("TicketRandomnessGenerated reached");
           setStatusEvent(
-            `Ok, random value changed in ${randomNumber}, press mint button to mint your NFT`
+            `Ok, random value changed in ${_randomNumber}, press mint button to mint your NFT`
           );
-          let _tokensSupplyStatus = tokensSupplyStatus;
-          _tokensSupplyStatus.randomNumber = randomNumber;
-          setTokensSupplyStatus(_tokensSupplyStatus);
         });
 
         connectedContract.on('TicketMinted', (from, tokenId, counter) => {
           setStatusEvent(
             `NFT edition ${counter}/${TOTAL_SUPPLY} minted! It can take a max of 10 min to show up on OpenSea. Here's the link: https://testnets.opensea.io/assets/${CONTRACT_ADDRESS}/${tokenId.toNumber()}`
           );
+          setButtonMintStatus(false);
           refreshTokenList();
           getTokensSupplyStatus();
         });
@@ -281,7 +287,6 @@ const App = () => {
           refreshTokenList();
         });
 
-        setButtonMintStatus(false);
         console.log('Setup event done');
       } else {
         console.log("Ethereum object doesn't exist!");
@@ -306,24 +311,26 @@ const App = () => {
         );
 
         console.log('Going to pop wallet now to pay gas...');
-        setStatusEvent("I'm pulling out a random ticket, please wait...");
-        let nftTxn = connectedContract.requestRandomWords({ gasLimit: 1000000 }).then((response) => {
-          console.log("Random request response ok");
+        connectedContract.requestRandomWords({ gasLimit: 1000000 }).then((response) => {
+          setStatusEvent(`Requested to mix tickets...  
+                        You can see transaction here: https://goerli.etherscan.io/tx/${
+            response.hash}`);
           console.log(response);
         }).catch(error => {
           console.log("Error in retrieving random request");
           console.log(error);
+          setStatusEvent("");
+          setButtonRandomStatus(false);
         });
-
-        console.log('Getting a random number through ChainLink, please wait...');
-        //await nftTxn.wait();
-
+        console.log('Getting a random number, please wait...');
       } else {
         console.log("Ethereum object doesn't exist!");
+        setStatusEvent("");
         setButtonRandomStatus(false);
       }
     } catch (error) {
       console.log(error);
+      setStatusEvent("");
       setButtonRandomStatus(false);
     }
   };
@@ -343,22 +350,31 @@ const App = () => {
         );
 
         console.log('Going to pop wallet now to pay gas...');
-        let nftTxn = await connectedContract.mintTicket({ value: ethers.utils.parseEther(tokensSupplyStatus.mintPrice), gasLimit: 1000000 });
-        setStatusEvent("I'm minting your NFT...");
+        connectedContract.mintTicket({ value: ethers.utils.parseEther(tokensSupplyStatus.mintPrice), gasLimit: 1000000 }).then((response) => {
+          console.log(response);
+          setStatusEvent(`I'm minting your NFT... 
+                        You can see transaction here: https://goerli.etherscan.io/tx/${
+            response.hash}`);
+          console.log('Mining...please wait.');
+          console.log(
+            `Mined, see transaction: https://goerli.etherscan.io/tx/${
+            response.hash
+            }`
+          );
+        }).catch(error => {
+          console.log("Error in retrieving random request");
+          console.log(error);
+          setStatusEvent("");
+          setButtonMintStatus(false);
+        });
 
-        console.log('Mining...please wait.');
-        await nftTxn.wait();
-
-        console.log(
-          `Mined, see transaction: https://goerli.etherscan.io/tx/${
-          nftTxn.hash
-          }`
-        );
       } else {
         console.log("Ethereum object doesn't exist!");
+        setStatusEvent("");
         setButtonMintStatus(false);
       }
     } catch (error) {
+      setStatusEvent("");
       setButtonMintStatus(false);
     }
   };
@@ -490,32 +506,33 @@ const App = () => {
                 {getRarity(tokensSupplyStatus.randomNumber)} last sorted</div>
             </div>
           )}
-        <div className="status-navbar">
+        {statusEvent !== '' ? (<div className="status-navbar">
           <div className="status-label">{statusEvent}</div>
-        </div>
+        </div>) : (<div></div>)}
       </div>
       <div className="container">
         <div className="header-container">
           <p className="sub-text disclaimer">
-            This dApp let you mint a Ticket as NFT. You will receive a ticket
-						with a random rarity (Common, rare, super-rare).
+            This dApp let you mint a Ticket as NFT.<br /> You will receive a ticket
+						with a random rarity if press "mix tickets" before mint.
 					</p>
           {currentAccount === '' ? (
             <div />
           ) : (
               <div>
                 <button
+                  title="Click this button to change the possibility to reach different ticket rarity: If you don't do this you will pull a common ticket. It may takes several minutes depending on Chainlink network traffic"
                   disabled={buttonRandomStatus}
                   onClick={askContractToGenerateRandomness}
-                  className="cta-button connect-wallet-button"
+                  className={"cta-button connect-wallet-button" + (buttonRandomStatus ? "button-loading " : "")}
                 >
                   Mix Tickets
                  </button>
-                <p className="secondary-text">Click the button over to change the possibility to reach different ticket rarity: If you don't do this you will pull a common ticket</p>
                 <button
+                  title="Click this button to mint your ticket NFT"
                   disabled={buttonMintStatus}
                   onClick={askContractToMintToken}
-                  className="cta-button connect-wallet-button"
+                  className={"cta-button connect-wallet-button" + (buttonMintStatus ? "button-loading " : "")}
                 >
                   Mint Ticket
                  </button>
