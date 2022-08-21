@@ -68,9 +68,9 @@ This project is composed in 3 component:
 
 Features:
 - Mint random NFT
-- View owned NFTs
+- View owned NFTs through Etherscan API
 - Send NFT to another address
-- Governance functions like send balance, pause contract, edit supply, mint price ecc
+- Governance functions like edit rarity params
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -78,7 +78,7 @@ Features:
 
 Major frameworks/libraries used to bootstrap project:
 
-- **Solidity** v0.8.1
+- **Solidity** v0.8.7
 - **Hardhat** v8.5.0
 - **Node** v16.14.2
 
@@ -88,7 +88,8 @@ Major frameworks/libraries used to bootstrap project:
 
 ### Prerequisites
 
-Register to [replit.com](replit.com)
+- Register to [replit.com](replit.com)
+- Register to Etherscan and get API Key
 
 ### Installation
 
