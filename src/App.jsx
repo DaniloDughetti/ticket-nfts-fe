@@ -9,9 +9,9 @@ import axios from 'axios';
 
 const TWITTER_HANDLE = 'danilodughetti';
 const TWITTER_LINK = `https://twitter.com/${TWITTER_HANDLE}`;
-const OPENSEA_LINK = '';
 const TOTAL_SUPPLY = 100;
-const CONTRACT_ADDRESS = '0xD601A33bC1dA159b5A72D276643F612Aa2977C91';
+const CONTRACT_ADDRESS = '0x736E5ff0ABe12F8920CEF676354d36c8F093E68b';
+const OWNER_ADDRESS = "0xb0D8de893253A41f61Bd8D538D988CE246280Ac1";
 const API_KEY = 'TTH82UMFMKUSWYII2XESH728527BNFAG83';
 const BASE_URL = `https://api-goerli.etherscan.io/api?module=account&action=tokennfttx&contractaddress=${CONTRACT_ADDRESS}&page=1&offset=100&startblock=0&sort=asc&apikey=${API_KEY}`;
 
@@ -23,21 +23,31 @@ const App = () => {
   const [tokenList, setTokenList] = useState([]);
   const [isTokensLoading, setIsTokensLoading] = useState(true);
   const [tokensSupplyStatus, setTokensSupplyStatus] = useState({});
-  const [inputAddress, setInputAddress] = React.useState([]);
-  const [isTokenSendLoading, setIsTokenSendLoading] = React.useState(false);
+  const [inputAddress, setInputAddress] = useState([]);
+  const [isTokenSendLoading, setIsTokenSendLoading] = useState(false);
+  const [isAddressOwner, setIsAddressOwner] = useState(false);
   const [addressSending, setAddressSending] = useState('');
+
+  /*
+    Utility methods
+  */
+  const isOwner = (account) => {
+    return isAddressEqual(OWNER_ADDRESS, account);
+  }
+
+  const getRandomNumber = (min, max) => {
+    let difference = max - min;
+    let randomNumber = Math.random();
+    randomNumber = Math.floor(randomNumber * difference);
+    randomNumber = randomNumber + min;
+    return randomNumber;
+  }
+
 
   const getAddressToSend = (index) => {
     let address = getCurrentAccountCropped(addressSending);
     return <div key={"account" + index}>{address}</div>;
   }
-
-  const onChangeAddressHandler = (event, index) => {
-    const value = event.target.value;
-    let addresses = inputAddress;
-    addresses[index] = value;
-    setInputAddress(addresses);
-  };
 
   const isAddressEqual = (address, addressToCompare) => {
     return (
@@ -48,6 +58,37 @@ const App = () => {
     );
   };
 
+  const uniqByKeepFirst = (a, key) => {
+    let seen = new Set();
+    return a.filter(item => {
+      let k = key(item);
+      return seen.has(k) ? false : seen.add(k);
+    });
+  };
+
+  const onChangeAddressHandler = (event, index) => {
+    const value = event.target.value;
+    let addresses = inputAddress;
+    addresses[index] = value;
+    setInputAddress(addresses);
+  };
+
+  const getCurrentAccountCropped = account => {
+    try {
+      return (
+        account.substring(0, 3) +
+        '...' +
+        account.substring(account.length - 3, account.length)
+      );
+    } catch (error) {
+      console.log(error);
+      return '';
+    }
+  };
+
+  /*
+    Contract request methods
+  */
   const getTokensSupplyStatus = async () => {
     const provider = new ethers.providers.Web3Provider(ethereum);
     const signer = provider.getSigner();
@@ -60,7 +101,8 @@ const App = () => {
     contractCalls.push(connectedContract.getTokenCounter());
     contractCalls.push(connectedContract.getMaxSupply());
     contractCalls.push(connectedContract.getMintPrice());
-    contractCalls.push(connectedContract.getRandomNumber());
+    contractCalls.push(connectedContract.getUpdatedUpperLimitCommon());
+    contractCalls.push(connectedContract.getUpdatedUpperLimitRare());
 
     Promise.all(contractCalls)
       .then(response => {
@@ -70,26 +112,20 @@ const App = () => {
           currentToken: response[0].toNumber(),
           maxSupply: response[1].toNumber(),
           mintPrice: mintPrice,
-          randomNumber: response[3].toNumber()
+          updatedUpperLimitCommon: response[3].toNumber(),
+          updatedUpperLimitRare: response[4].toNumber(),
         });
       })
       .catch(error => {
         console.log(error);
-        setTokensSupplyStatus({ currentToken: null, maxSupply: null, mintPrice: null, randomNumber: null });
+        setTokensSupplyStatus({ currentToken: null, maxSupply: null, mintPrice: null, updatedUpperLimitCommon: null, updatedUpperLimitRare });
       });
-  };
-
-  const uniqByKeepFirst = (a, key) => {
-    let seen = new Set();
-    return a.filter(item => {
-      let k = key(item);
-      return seen.has(k) ? false : seen.add(k);
-    });
   };
 
   const setTokenListFromEtherScan = async address => {
     let baseUrl = BASE_URL + '&address=' + address;
     let tokenIds = [];
+    console.log(baseUrl);
     axios
       .get(baseUrl)
       .then(response => {
@@ -197,6 +233,7 @@ const App = () => {
 
     if (accounts.length !== 0) {
       const account = accounts[0];
+      setIsAddressOwner(isOwner(account));
       console.log('Found an authorized account:', account);
       setCurrentAccount(account);
 
@@ -206,9 +243,6 @@ const App = () => {
     }
   };
 
-	/*
-  * Implement your connectWallet method here
-  */
   const connectWallet = async () => {
     try {
       const { ethereum } = window;
@@ -225,72 +259,6 @@ const App = () => {
       setCurrentAccount(accounts[0]);
       refreshTokenList();
       getTokensSupplyStatus();
-    } catch (error) {
-      console.log(error);
-    }
-  };
-
-  const getRarity = (randomNumber) => {
-    if (randomNumber >= 60 && randomNumber <= 90) {
-      return "Rare ticket (" + randomNumber + ")";
-    } else if (randomNumber > 90) {
-      return "Super rare ticket (" + randomNumber + ")";
-    } else {
-      return "Common ticket (" + randomNumber + ")";
-    }
-  }
-
-  const setupEventListener = async () => {
-    console.log('setupEventListener started');
-    try {
-      const { ethereum } = window;
-
-      if (ethereum) {
-        const provider = new ethers.providers.Web3Provider(ethereum);
-        const signer = provider.getSigner();
-        const connectedContract = new ethers.Contract(
-          CONTRACT_ADDRESS,
-          TicketNFTGenerator.abi,
-          signer
-        );
-
-        connectedContract.on('TicketRandomnessGenerated', (randomNumber) => {
-          let _randomNumber = 1;
-          try {
-            _randomNumber = randomNumber.toNumber();
-          } catch (error) {
-            console.log(error);
-          }
-          getTokensSupplyStatus();
-          setButtonRandomStatus(false);
-
-          console.log("TicketRandomnessGenerated reached");
-          setStatusEvent(
-            `Ok, random value changed in ${_randomNumber}, press mint button to mint your NFT`
-          );
-        });
-
-        connectedContract.on('TicketMinted', (from, tokenId, counter) => {
-          setStatusEvent(
-            `NFT edition ${counter}/${TOTAL_SUPPLY} minted! It can take a max of 10 min to show up on OpenSea. Here's the link: https://testnets.opensea.io/assets/${CONTRACT_ADDRESS}/${tokenId.toNumber()}`
-          );
-          setButtonMintStatus(false);
-          refreshTokenList();
-          getTokensSupplyStatus();
-        });
-
-        connectedContract.on('TicketSent', (tokenId, from, to) => {
-          alert(
-            `NFT edition ${tokenId}/${TOTAL_SUPPLY} correctly sent from address ${from} to address ${to}`
-          );
-          setIsTokenSendLoading(false);
-          refreshTokenList();
-        });
-
-        console.log('Setup event done');
-      } else {
-        console.log("Ethereum object doesn't exist!");
-      }
     } catch (error) {
       console.log(error);
     }
@@ -315,7 +283,6 @@ const App = () => {
           setStatusEvent(`Requested to mix tickets...  
                         You can see transaction here: https://goerli.etherscan.io/tx/${
             response.hash}`);
-          console.log(response);
         }).catch(error => {
           console.log("Error in retrieving random request");
           console.log(error);
@@ -350,7 +317,9 @@ const App = () => {
         );
 
         console.log('Going to pop wallet now to pay gas...');
-        connectedContract.mintTicket({ value: ethers.utils.parseEther(tokensSupplyStatus.mintPrice), gasLimit: 1000000 }).then((response) => {
+        let randomNumber = getRandomNumber(0, 100);
+        console.log(randomNumber);
+        connectedContract.mintTicket(randomNumber, { value: ethers.utils.parseEther(tokensSupplyStatus.mintPrice), gasLimit: 1000000 }).then((response) => {
           console.log(response);
           setStatusEvent(`I'm minting your NFT... 
                         You can see transaction here: https://goerli.etherscan.io/tx/${
@@ -379,18 +348,6 @@ const App = () => {
     }
   };
 
-  const renderNotConnectedContainer = () => (
-    <button
-      onClick={connectWallet}
-      className="cta-button connect-wallet-button"
-    >
-      Connect to Wallet
-		</button>
-  );
-
-	/*
-    Function doesn't work: tokenId undefined
-  */
   const sendGift = async (event, tokenId, index) => {
     const provider = new ethers.providers.Web3Provider(ethereum);
     const signer = provider.getSigner();
@@ -412,6 +369,70 @@ const App = () => {
         setIsTokenSendLoading(false);
       });
   };
+
+  /*
+    Event handler methods
+  */
+  const setupEventListener = async () => {
+    console.log('setupEventListener started');
+    try {
+      const { ethereum } = window;
+
+      if (ethereum) {
+        const provider = new ethers.providers.Web3Provider(ethereum);
+        const signer = provider.getSigner();
+        const connectedContract = new ethers.Contract(
+          CONTRACT_ADDRESS,
+          TicketNFTGenerator.abi,
+          signer
+        );
+
+        connectedContract.on('TicketRandomnessGenerated', () => {
+          getTokensSupplyStatus();
+          setButtonRandomStatus(false);
+          console.log("TicketRandomnessGenerated reached");
+          setStatusEvent(
+            `Ticket rarity changed, press mint button to mint your NFT`
+          );
+        });
+
+        connectedContract.on('TicketMinted', (from, tokenId, counter) => {
+          setStatusEvent(
+            `NFT edition ${counter}/${TOTAL_SUPPLY} minted! It can take a max of 10 min to show up on OpenSea. Here's the link: https://testnets.opensea.io/assets/${CONTRACT_ADDRESS}/${tokenId.toNumber()}`
+          );
+          setButtonMintStatus(false);
+          refreshTokenList();
+          getTokensSupplyStatus();
+        });
+
+        connectedContract.on('TicketSent', (tokenId, from, to) => {
+          alert(
+            `NFT edition ${tokenId}/${TOTAL_SUPPLY} correctly sent from address ${from} to address ${to}`
+          );
+          setIsTokenSendLoading(false);
+          refreshTokenList();
+        });
+
+        console.log('Setup event done');
+      } else {
+        console.log("Ethereum object doesn't exist!");
+      }
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
+  /*
+    UI Render methods
+  */
+  const renderNotConnectedContainer = () => (
+    <button
+      onClick={connectWallet}
+      className="cta-button connect-wallet-button"
+    >
+      Connect to Wallet
+		</button>
+  );
 
   const renderTokenList = () => {
     let tokenListToRender = [];
@@ -473,19 +494,6 @@ const App = () => {
     getTokensSupplyStatus();
   }, []);
 
-  const getCurrentAccountCropped = account => {
-    try {
-      return (
-        account.substring(0, 3) +
-        '...' +
-        account.substring(account.length - 3, account.length)
-      );
-    } catch (error) {
-      console.log(error);
-      return '';
-    }
-  };
-
   return (
     <div className="App">
       <div className="navbar">
@@ -503,7 +511,10 @@ const App = () => {
               <div className="status-text">
                 {tokensSupplyStatus.currentToken}/{
                   tokensSupplyStatus.maxSupply} minted <br />{tokensSupplyStatus.mintPrice} ETH to mint <br />
-                {getRarity(tokensSupplyStatus.randomNumber)} last sorted</div>
+                {tokensSupplyStatus.updatedUpperLimitCommon}%C{' '}
+                {tokensSupplyStatus.updatedUpperLimitRare - tokensSupplyStatus.updatedUpperLimitCommon}%R{' '} 
+                {100 - tokensSupplyStatus.updatedUpperLimitRare}%S
+              </div>
             </div>
           )}
         {statusEvent !== '' ? (<div className="status-navbar">
@@ -514,20 +525,22 @@ const App = () => {
         <div className="header-container">
           <p className="sub-text disclaimer">
             This dApp let you mint a Ticket as NFT.<br /> You will receive a ticket
-						with a random rarity if press "mix tickets" before mint.
+						with a random rarity.
 					</p>
           {currentAccount === '' ? (
             <div />
           ) : (
               <div>
                 <button
-                  title="Click this button to change the possibility to reach different ticket rarity: If you don't do this you will pull a common ticket. It may takes several minutes depending on Chainlink network traffic"
+                  title="Change rarity parameters"
                   disabled={buttonRandomStatus}
                   onClick={askContractToGenerateRandomness}
-                  className={"cta-button connect-wallet-button" + (buttonRandomStatus ? "button-loading " : "")}
+                  className={"cta-button connect-wallet-button" + (buttonRandomStatus ? "button-loading " : "") + (!isAddressOwner ? " hidden-button" : "")}
                 >
-                  Mix Tickets
+                  Change rarity (only owner)
                  </button>
+                )
+                <br/><br/>
                 <button
                   title="Click this button to mint your ticket NFT"
                   disabled={buttonMintStatus}
