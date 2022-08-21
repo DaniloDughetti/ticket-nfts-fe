@@ -114,11 +114,12 @@ Once deployed, you can see your smart contract on Etherscan and interact directl
 
 - [ ] Add Changelog
 - [ ] Add unit tests
-- [ ] Add asserts
+- [ ] Add dotenv
 - [ ] Multi-language Support
     - [ ] Italian
     - [ ] Spanish
     - [ ] German
+- [ ] Improve UI
 
 See the [open issues](https://github.com/DaniloDughetti/ticket-nfts-fe/issues) for a full list of proposed features (and known issues).
 
